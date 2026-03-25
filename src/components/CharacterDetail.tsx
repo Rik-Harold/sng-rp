@@ -7,9 +7,28 @@ import { capitalizeFirstLetter } from '@/middlewares/formatfunctions';
 
 // Listes d'options pour les champs de sélection
 const GRADES = ['Aspirant Ninja', 'Genin', 'Chunin', 'AMBU', 'Capitaine AMBU', 'Chef de Section', 'Jonin', 'Chef de clan', 'Hokage', 'Mizukage', 'Kazekage', 'Raikage', 'Tsuchikage'];
-const CHAKRA_NATURES_OPTIONS = ['Eau (Suiton 🌊)', 'Air (Futon🌪)', 'Feu (Katon🔥)', 'Terre (Doton⛰)', 'Foudre (Raiton⚡)', 'Yin (Inton🌙)', 'Yang (Yoton🌕)', 'Yin-Yang (Inyôton☯)'];
-const SPECIALIZATIONS = ['Aucune', 'Ninja sensoriel', 'Ninja spatio-temporel', 'Ninja médecin'];
+const SPECIALIZATIONS = ['Aucune', 'Ninja sensoriel', 'Ninja spatio-temporel', 'Ninja médecin', 'Utilisateur de la force améliorée'];
+const SPECIAL_CAPACITY = ['Aucune', 'Rinnegan', 'Absorption de chakra', 'Foudre noire', 'Senjutsu des crapauds', 'Senjutsu des serpents', 'Senjutsu des limaces', 'Senjutsu des hommes', 'Auto-régénération'];
 const VILLAGES = ['Konoha', 'Kiri', 'Suna', 'Kumo', 'Iwa', 'Ame', 'Taki', 'Oto', 'Uzushio'];
+const HEREDITARY_CAPACITIES = ['Sharingan', 'MS', 'MSE', 'Byakugan', 'Ketsuryugan', "Oeil de l'esprit de Kagura", 'Aemongan', 'Aemongan Full', 'Kyogan', 'Kyokogan', 'Ogan', 'Oningan', 'Oganingan', 'Lumigan'];
+const CHAKRA_NATURES_OPTIONS = [
+  { name: 'Eau - Suiton 🌊', value: 'suiton' },
+  { name: 'Air - Futon🌪', value: 'futon' },
+  { name: 'Feu - Katon🔥', value: 'katon' },
+  { name: 'Terre - Doton⛰', value: 'doton' },
+  { name: 'Foudre - Raiton⚡', value: 'raiton' },
+  { name: 'Point souple 🤚', value: 'juken' },
+  { name: 'Yin - Inton🌙', value: 'inton' },
+  { name: 'Yang - Yoton🌕', value: 'yang' },
+  { name: 'Yin-Yang - Inyoton☯', value: 'inyoton' },
+  { name: 'Lave - Yoton🌋', value: 'yoton' },
+  { name: 'Glace - Hyoton❄', value: 'hyoton' },
+  { name: 'Vapeur - Futton🌡', value: 'futton' },
+  { name: 'Cristal - Shoton💎', value: 'shoton' },
+  { name: 'Explosion - Bakuton💥', value: 'bakuton' },
+  { name: 'Magnétisme - Jiton🛎', value: 'jiton' },
+  { name: 'Végétation - Mokuton🌴', value: 'mokuton' },
+];
 
 // Types pour les props et le personnage
 type NinjaSkill = {
@@ -31,7 +50,7 @@ type NinjaSkills = {
 type Reward = {
   type: string;
   name?: string;
-  value?: any;
+  value?: number | string;
 };
 
 type Jutsu = {
@@ -145,6 +164,7 @@ interface ApiJutsu {
 }
 
 type Character = {
+  id: string;
   avatarName: string;
   image: string;
   level: number;
@@ -161,17 +181,12 @@ type Character = {
   specialCapacity: string;
   specialization: string;
   hereditaryCapacity: string[];
-  health: number;
-  strength: number;
-  speed: number;
-  intelligence: number;
   ninjaSkills: NinjaSkills;
   rewardsToApply: Reward[];
   ninjaEquipment: Equipment[];
   palmares: Palmares;
   jutsu: Jutsu[];
   ninjaExperience: EditableNinjaExperience[];
-  // Nouveaux champs pour l'édition
   newExperienceDate: string;
   newExperienceDescription: string;
 };
@@ -223,6 +238,7 @@ function SecretCodeModal({ open, onClose, onValidate, label }: { open: boolean; 
         <div className="flex gap-2 mt-4">
           <button type="button" onClick={onClose} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded">Annuler</button>
           <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded">Valider</button>
+          {/* <button type="button" onClick={handleSubmit} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded">Valider le code</button> */}
         </div>
       </form>
     </div>
@@ -248,7 +264,7 @@ export default function CharacterDetail({
   const [showSecretModal, setShowSecretModal] = useState<'save' | 'reward' | null>(null);
   const [secretError, setSecretError] = useState('');
   const [showRewardForm, setShowRewardForm] = useState(false);
-  const [newReward, setNewReward] = useState<{ type: string; name?: string; value?: any }>({ type: 'stat', name: '', value: 0 });
+  const [newReward, setNewReward] = useState<{ type: string; name?: string; value?: any }>({ type: 'ninjaSkillPoints', name: '', value: 1 });
 
   // Met à jour l'état interne si le personnage sélectionné change
   useEffect(() => {
@@ -345,6 +361,7 @@ export default function CharacterDetail({
         setJutsuList(data.liste);
       }
     } catch (e) {
+      console.error('Erreur lors de la récupération des jutsu:', e);
       setMessageBox({ show: true, message: 'Erreur lors de la récupération des jutsu', type: 'error' });
     } finally {
       setJutsuLoading(false);
@@ -453,16 +470,16 @@ export default function CharacterDetail({
   };
 
   // Gère les changements pour la sélection multiple (chakraNatures)
-  const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { options } = e.target;
-    const selectedValues = Array.from(options)
-      .filter(option => option.selected)
-      .map(option => option.value);
-    setEditableCharacter(prev => ({
-      ...prev,
-      chakraNatures: selectedValues,
-    }));
-  };
+  // const handleMultiSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  //   const { options } = e.target;
+  //   const selectedValues = Array.from(options)
+  //     .filter(option => option.selected)
+  //     .map(option => option.value);
+  //   setEditableCharacter(prev => ({
+  //     ...prev,
+  //     chakraNatures: selectedValues,
+  //   }));
+  // };
 
   // Gère les changements pour les checkboxes des natures de chakra
   const handleChakraNatureCheckbox = (nature: string) => {
@@ -485,7 +502,7 @@ export default function CharacterDetail({
     let messageType: 'success' | 'error' = 'error';
 
     if (amount > 0) { // Augmenter
-      if (currentPcn <= 0) {
+      if (Number(currentPcn) <= 0) {
         message = 'Points de Compétences Ninja (PCN) insuffisants !';
         messageType = 'error';
         allowUpdate = false;
@@ -510,7 +527,7 @@ export default function CharacterDetail({
     // If no error, proceed with state update
     setEditableCharacter(prev => {
       let newSkillValue = prev.ninjaSkills[skillName].current + amount;
-      let newPcn = (prev.rewardsToApply.find(r => r.type === 'ninjaSkillPoints')?.value || 0) + (amount > 0 ? -1 : 1);
+      let newPcn = Number(prev.rewardsToApply.find(r => r.type === 'ninjaSkillPoints')?.value || 0) + (amount > 0 ? -1 : 1);
 
       const updatedRewardsToApply = prev.rewardsToApply.map(reward =>
         reward.type === 'ninjaSkillPoints' ? { ...reward, value: newPcn } : reward
@@ -532,54 +549,80 @@ export default function CharacterDetail({
 
   // Applique les récompenses générales aux statistiques et autres attributs
   const handleApplyRewards = () => {
-    let updatedChar = { ...editableCharacter };
+    // let updatedChar = { ...editableCharacter };
+    let updatedChar = editableCharacter;
     let remainingRewards: Reward[] = [];
 
     editableCharacter.rewardsToApply.forEach(reward => {
-      if (reward.type === 'stat') {
-        // Only allow keys that exist on Character and are number type
-        type CharacterNumberKeys = {
-          [K in keyof Character]: Character[K] extends number ? K : never
-        }[keyof Character];
-        const key = reward.name as CharacterNumberKeys;
-        if (key && typeof updatedChar[key] === 'number') {
-          updatedChar = {
-            ...updatedChar,
-            [key]: (updatedChar[key] as number) + reward.value,
-          };
-        }
-      } else if (reward.type === 'grade') {
-        updatedChar.grade = reward.value;
+      // if (reward.type === 'stat') {
+      //   // Only allow keys that exist on Character and are number type
+      //   type CharacterNumberKeys = {
+      //     [K in keyof Character]: Character[K] extends number ? K : never
+      //   }[keyof Character];
+      //   const key = reward.name as CharacterNumberKeys;
+      //   if (key && typeof updatedChar[key] === 'number') {
+      //     updatedChar = {
+      //       ...updatedChar,
+      //       [key]: (updatedChar[key] as number) + reward.value,
+      //     };
+      //   }
+      // } else 
+      if (reward.type === 'grade') {
+        updatedChar.grade = typeof reward.value === 'string' ? reward.value : String(reward.value ?? '');
+      } else if (reward.type === 'specialization') {
+        updatedChar.specialization = String(reward.value ?? '');
+      } else if (reward.type === 'currentVillage') {
+        updatedChar.currentVillage = typeof reward.value === 'string' ? reward.value : String(reward.value ?? '');
+      } else if (reward.type === 'age') {
+        updatedChar.age = typeof reward.value === 'number' ? reward.value : parseInt(reward.value as string) || 0;
+      } else if (reward.type === 'specialCapacity') {
+        updatedChar.specialCapacity = String(reward.value ?? '');
       } else if (reward.type === 'affinity') {
         // Add new affinity if not already present
-        if (!updatedChar.chakraNatures.includes(reward.value)) {
-          updatedChar.chakraNatures = [...updatedChar.chakraNatures, reward.value];
+        if (typeof reward.value !== 'undefined') {
+          const valueStr = String(reward.value);
+          if (!updatedChar.chakraNatures.includes(valueStr)) {
+            updatedChar.chakraNatures = [...updatedChar.chakraNatures, valueStr];
+          }
+        }
+      } else if (reward.type === 'hereditaryCapacity') {
+        // Add new affinity if not already present
+        if (typeof reward.value !== 'undefined') {
+          const valueStr = String(reward.value);
+          if (!updatedChar.hereditaryCapacity.includes(valueStr)) {
+            updatedChar.hereditaryCapacity = [...updatedChar.hereditaryCapacity, valueStr];
+          }
         }
       } else if (reward.type === 'ninjaSkillPoints') {
         // PCN are applied incrementally, keep them if not fully spent
-        if (reward.value > 0) {
-            remainingRewards.push(reward);
+        if (typeof reward.value !== 'undefined' && Number(reward.value) > 0) {
+          remainingRewards.push(reward);
         }
       } else {
         remainingRewards.push(reward); // Keep other unhandled rewards
       }
     });
 
-    setEditableCharacter(prev => ({
-      ...updatedChar, // Use the updatedChar object after applying rewards
-      rewardsToApply: remainingRewards, // Update rewardsToApply to only include remaining ones
-    }));
+    // Ajout des récompenses restantes à l'état du personnage
+    updatedChar.rewardsToApply = remainingRewards;
 
+    // Met à jour l'état du personnage avec les récompenses appliquées
+    setEditableCharacter(updatedChar);
+    // console.log('Récompenses appliquées:', updatedChar.grade);
+    // console.log('Récompenses appliquées:', editableCharacter.grade);
+    // console.log('Récompenses restantes:', updatedChar.rewardsToApply);
+    // console.log('Récompenses restantes:', editableCharacter.rewardsToApply);
+    
     setMessageBox({ show: true, message: 'Récompenses appliquées ! N\'oubliez pas de sauvegarder.', type: 'success' });
   };
 
   // Gère la soumission du formulaire de mise à jour
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    onUpdate(editableCharacter);
-    setShowSaveSuccess(true);
-    setTimeout(() => setShowSaveSuccess(false), 3000); // Cache le message après 3 secondes
-  };
+  // const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  //   e.preventDefault();
+  //   onUpdate(editableCharacter);
+  //   setShowSaveSuccess(true);
+  //   setTimeout(() => setShowSaveSuccess(false), 3000); // Cache le message après 3 secondes
+  // };
 
   const skillLabels = {
     agility: 'Agilité', speed: 'Vitesse', precision: 'Précision', reactivity: 'Réactivité',
@@ -630,12 +673,13 @@ export default function CharacterDetail({
   // Handler pour ajouter une récompense
   const handleAddReward = (e: React.FormEvent) => {
     e.preventDefault();
+    let newRewardsList = editableCharacter.rewardsToApply;
+    newRewardsList.push(newReward);
     setEditableCharacter(prev => ({
       ...prev,
-      rewardsToApply: [...prev.rewardsToApply, newReward],
+      rewardsToApply: newRewardsList,
     }));
     setShowRewardForm(false);
-    setNewReward({ type: 'stat', name: '', value: 0 });
     setMessageBox({ show: true, message: 'Récompense ajoutée !', type: 'success' });
   };
 
@@ -704,6 +748,116 @@ export default function CharacterDetail({
         label="Entrer le code secret pour ajouter une récompense"
       />
 
+      {/* Formulaire d'ajout de récompense */}
+      {showRewardForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <form onSubmit={handleAddReward} className="bg-gray-900 p-8 rounded-lg shadow-xl border border-gray-700 w-full max-w-md">
+            <h2 className="text-xl font-bold text-yellow-300 mb-4 text-center">Ajouter une récompense</h2>
+            <div className="mb-4">
+              <label className="block text-gray-300 mb-1">Type</label>
+              <select
+                value={newReward.type}
+                onChange={e => setNewReward({ ...newReward, type: e.target.value })}
+                className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              >
+                <option value="age">Age</option>
+                <option value="grade">Grade</option>
+                <option value="affinity">Affinité</option>
+                <option value="ninjaSkillPoints">Points de Compétence Ninja</option>
+                <option value="currentVillage">Village</option>
+                <option value="specialization">Spécialisation</option>
+                <option value="specialCapacity">Capacité spéciale</option>
+                <option value="hereditaryCapacity">Capacité héréditaire</option>
+              </select>
+            </div>
+            {/* {newReward.type === 'stat' && (
+              <div className="mb-4">
+                <label className="block text-gray-300 mb-1">Nom de la statistique</label>
+                <input
+                  type="text"
+                  value={newReward.name || ''}
+                  onChange={e => setNewReward({ ...newReward, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                />
+              </div>
+            )} */}
+            <div className="mb-4">
+              <label className="block text-gray-300 mb-1">Valeur</label>
+              {
+                (newReward.type === 'age' || newReward.type === 'ninjaSkillPoints')  ? (
+                  <input
+                    type="number"
+                    value={newReward.value || ''}
+                    onChange={e => setNewReward({ ...newReward, value: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  />) : 
+                (newReward.type === 'currentVillage') ? (
+                  <select id="currentVillage" name="currentVillage" value={editableCharacter.currentVillage} onChange={handleSelectChange}
+                    className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400">
+                    {VILLAGES.map(village => (
+                      <option key={village} value={village.toLowerCase()}>{village}</option>
+                    ))}
+                  </select>
+                ) : 
+                (newReward.type === 'affinity') ? (
+                  <select
+                    value={newReward.value || ''}
+                    onChange={e => setNewReward({ ...newReward, value: e.target.value })}
+                    className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                  >
+                    {CHAKRA_NATURES_OPTIONS.map(nature => (
+                      <option key={nature.value} value={nature.value}>{nature.name}</option>
+                    ))}
+                  </select>
+                ) : 
+                (newReward.type === 'grade') ? (
+                  <select id="grade" name="grade" value={editableCharacter.grade} onChange={handleSelectChange}
+                    className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400">
+                    {GRADES.map(grade => (
+                      <option key={grade} value={grade}>{grade}</option>
+                    ))}
+                  </select>
+                ) :
+                (newReward.type === 'specialization') ? (
+                  <select id="specialization" name="specialization" value={editableCharacter.specialization} onChange={handleSelectChange}
+                    className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400">
+                    {SPECIALIZATIONS.map(spec => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
+                  </select>
+                ) : 
+                (newReward.type === 'hereditaryCapacity') ? (
+                  <select id="hereditaryCapacity" name="hereditaryCapacity" value={editableCharacter.hereditaryCapacity} onChange={handleSelectChange}
+                    className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400">
+                    {HEREDITARY_CAPACITIES.map(capacity => (
+                      <option key={capacity} value={capacity.toLowerCase()}>{capacity}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <select id="specialCapacity" name="specialCapacity" value={editableCharacter.specialCapacity} onChange={handleSelectChange}
+                    className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400">
+                    {SPECIAL_CAPACITY.map(capacity => (
+                      <option key={capacity} value={capacity.toLowerCase()}>{capacity}</option>
+                    ))}
+                  </select>
+                )
+              }
+              
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button type="button" onClick={() => setShowRewardForm(false)} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded">Annuler</button>
+              <button type="submit" className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded">Ajouter</button>
+            </div>
+          </form>
+        </div>
+      )}
+      {/* Message d'erreur code secret */}
+      {secretError && (
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded shadow-lg z-50 text-center font-bold">
+          {secretError}
+        </div>
+      )}
+
       <form onSubmit={e => { e.preventDefault(); setShowSecretModal('save'); }}>
         {/* Section Récompenses Générales */}
         <div className="mb-6 bg-gray-800 p-5 rounded-lg shadow-inner border border-gray-700">
@@ -724,11 +878,24 @@ export default function CharacterDetail({
               {editableCharacter.rewardsToApply.filter(r => r.type !== 'ninjaSkillPoints').map((reward, index) => (
                 <p key={index} className="text-gray-300 mb-2 text-lg">
                   {reward.type === 'stat' && reward.name
-                    ? `${reward.name.charAt(0).toUpperCase() + reward.name.slice(1)}: +${reward.value}`
+                    // ? `${reward.name.charAt(0).toUpperCase() + reward.name.slice(1)}: +${reward.value}`
+                    ? `Points de Compétence Ninja: +${reward.value}`
                     : reward.type === 'grade'
                     ? `Nouveau grade: ${reward.value}`
                     : reward.type === 'affinity'
                     ? `Nouvelle affinité: ${reward.value}`
+                    : reward.type === 'currentVillage'
+                    ? `Nouveau village: ${reward.value}`
+                    : reward.type === 'age'
+                    ? `Nouvel âge: ${reward.value} ans`
+                    : reward.type === 'affinity'
+                    ? `Nouvelle affinité: ${reward.value}`
+                    : reward.type === 'specialization'
+                    ? `Spécialisation: ${reward.value}`
+                    : reward.type === ''
+                    ? `Capacité spéciale: ${reward.value}`
+                    : reward.type === 'hereditaryCapacity'
+                    ? `Nouvelle capacité héréditaire: ${reward.value}`
                     : `Type de récompense inconnu: ${reward.type}`}
                 </p>
               ))}
@@ -746,58 +913,6 @@ export default function CharacterDetail({
             <p className="text-gray-400 italic">Aucune récompense générale en attente.</p>
           )}
         </div>
-        
-        {/* Formulaire d'ajout de récompense */}
-        {showRewardForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-            <form onSubmit={handleAddReward} className="bg-gray-900 p-8 rounded-lg shadow-xl border border-gray-700 w-full max-w-md">
-              <h2 className="text-xl font-bold text-yellow-300 mb-4 text-center">Ajouter une récompense</h2>
-              <div className="mb-4">
-                <label className="block text-gray-300 mb-1">Type</label>
-                <select
-                  value={newReward.type}
-                  onChange={e => setNewReward({ ...newReward, type: e.target.value })}
-                  className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                >
-                  <option value="stat">Statistique</option>
-                  <option value="grade">Grade</option>
-                  <option value="affinity">Affinité</option>
-                  <option value="ninjaSkillPoints">PCN</option>
-                </select>
-              </div>
-              {newReward.type === 'stat' && (
-                <div className="mb-4">
-                  <label className="block text-gray-300 mb-1">Nom de la statistique</label>
-                  <input
-                    type="text"
-                    value={newReward.name || ''}
-                    onChange={e => setNewReward({ ...newReward, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                  />
-                </div>
-              )}
-              <div className="mb-4">
-                <label className="block text-gray-300 mb-1">Valeur</label>
-                <input
-                  type="number"
-                  value={newReward.value || ''}
-                  onChange={e => setNewReward({ ...newReward, value: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-                />
-              </div>
-              <div className="flex gap-2 mt-4">
-                <button type="button" onClick={() => setShowRewardForm(false)} className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded">Annuler</button>
-                <button type="submit" className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 rounded">Ajouter</button>
-              </div>
-            </form>
-          </div>
-        )}
-        {/* Message d'erreur code secret */}
-        {secretError && (
-          <div className="fixed top-8 left-1/2 -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded shadow-lg z-50 text-center font-bold">
-            {secretError}
-          </div>
-        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Section Informations de Base */}
@@ -839,7 +954,7 @@ export default function CharacterDetail({
               <label htmlFor="age" className="block text-gray-300 text-sm font-bold mb-2">
                 Âge:
               </label>
-              <input type="number" id="age" name="age" value={editableCharacter.age} onChange={handleChange} disabled={true}
+              <input type="number" id="age" name="age" value={editableCharacter.age} onChange={handleChange} disabled={!isFieldEditableAsReward('age')}
                 className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400" />
             </div>
             <div className="mb-4">
@@ -871,19 +986,19 @@ export default function CharacterDetail({
               </label>
               <div className="flex flex-wrap gap-2">
                 {CHAKRA_NATURES_OPTIONS.map(nature => (
-                  <label key={nature} className={`flex items-center px-3 py-2 rounded-lg cursor-pointer border transition-all duration-200
-                    ${editableCharacter.chakraNatures.includes(nature) ? 'bg-blue-600 border-blue-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300'}
+                  <label key={nature.value} className={`flex items-center px-3 py-2 rounded-lg cursor-pointer border transition-all duration-200
+                    ${editableCharacter.chakraNatures.includes(nature.value) ? 'bg-blue-600 border-blue-400 text-white' : 'bg-gray-700 border-gray-600 text-gray-300'}
                     ${!isFieldEditableAsReward('affinity') ? 'opacity-50 cursor-not-allowed' : ''}
                   `}>
                     <input
                       type="checkbox"
-                      value={nature}
-                      checked={editableCharacter.chakraNatures.includes(nature)}
-                      onChange={() => handleChakraNatureCheckbox(nature)}
+                      value={nature.value}
+                      checked={editableCharacter.chakraNatures.includes(nature.value)}
+                      onChange={() => handleChakraNatureCheckbox(nature.value)}
                       disabled={!isFieldEditableAsReward('affinity')}
                       className="form-checkbox h-5 w-5 text-blue-500 mr-2 accent-blue-500"
                     />
-                    <span>{nature}</span>
+                    <span>{nature.name}</span>
                   </label>
                 ))}
               </div>
@@ -892,8 +1007,14 @@ export default function CharacterDetail({
               <label htmlFor="specialCapacity" className="block text-gray-300 text-sm font-bold mb-2">
                 Cap. spéciale:
               </label>
-              <input type="text" id="specialCapacity" name="specialCapacity" value={editableCharacter.specialCapacity} onChange={handleChange} disabled={true}
-                className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400" />
+              {/* <input type="text" id="specialCapacity" name="specialCapacity" value={editableCharacter.specialCapacity} onChange={handleChange} disabled={!isFieldEditableAsReward('specialCapacity')}
+                className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400" /> */}
+              <select id="specialCapacity" name="specialCapacity" value={editableCharacter.specialCapacity} onChange={handleSelectChange} disabled={!isFieldEditableAsReward('specialCapacity')}
+                className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400">
+                {SPECIAL_CAPACITY.map(capacity => (
+                  <option key={capacity} value={capacity.toLowerCase()}>{capacity}</option>
+                ))}
+                </select>
             </div>
             <div className="mb-4">
               <label htmlFor="specialization" className="block text-gray-300 text-sm font-bold mb-2">
@@ -913,14 +1034,14 @@ export default function CharacterDetail({
               <input type="text" id="hereditaryCapacity" name="hereditaryCapacity"
                 value={editableCharacter.hereditaryCapacity.join(', ')}
                 onChange={(e) => setEditableCharacter(prev => ({ ...prev, hereditaryCapacity: e.target.value.split(',').map(s => s.trim()) }))}
-                disabled={true}
+                disabled={!isFieldEditableAsReward('hereditaryCapacity')}
                 className="shadow appearance-none border border-gray-600 rounded w-full py-2 px-3 bg-gray-700 text-white leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-700 disabled:text-gray-400" />
             </div>
           </div>
         </div>
         
         {/* Section Stats Générales */}
-        <div className="mb-6 bg-gray-800 p-5 rounded-lg shadow-inner border border-gray-700">
+        {/* <div className="mb-6 bg-gray-800 p-5 rounded-lg shadow-inner border border-gray-700">
           <h3 className="text-2xl font-bold text-yellow-400 mb-4">Statistiques Générales</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {Object.entries({
@@ -945,7 +1066,7 @@ export default function CharacterDetail({
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Section Compétences Ninja */}
         <div className="mb-6 bg-gray-800 p-5 rounded-lg shadow-inner border border-gray-700">
@@ -976,7 +1097,7 @@ export default function CharacterDetail({
                   <motion.button
                     type="button"
                     onClick={() => adjustNinjaSkill(key as keyof NinjaSkills, 1)}
-                    disabled={skill.current >= skill.max || (editableCharacter.rewardsToApply.find(r => r.type === 'ninjaSkillPoints')?.value || 0) <= 0}
+                    disabled={skill.current >= skill.max || (Number(editableCharacter.rewardsToApply.find(r => r.type === 'ninjaSkillPoints')?.value) || 0) <= 0}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     className="p-1.5 rounded-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white text-lg px-4 cursor-pointer font-bold transition duration-200"

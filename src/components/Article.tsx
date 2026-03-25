@@ -1,6 +1,6 @@
 // Importation des dépendances
-import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Plus, Minus, X, Check, Star, Zap, Shield } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShoppingCart, Plus, Minus, Check, Star } from 'lucide-react';
 
 // Composant Article
 export type Article = {
@@ -11,15 +11,18 @@ export type Article = {
   stock: number;
   rarity: string;
   rating: number;
+  image?: string;
+  categorie?: string;
   // Ajoutez d'autres propriétés si nécessaire
 };
 
 type ArticleCardProps = {
   article: Article;
   onAddToCart: (article: Article & { quantite: number }) => void;
+  onShowRarity?: (article: Article) => void;
 };
 
-export function ArticleCard({ article, onAddToCart }: ArticleCardProps) {
+export function ArticleCard({ article, onAddToCart, onShowRarity }: ArticleCardProps) {
   const [quantite, setQuantite] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
 
@@ -27,6 +30,14 @@ export function ArticleCard({ article, onAddToCart }: ArticleCardProps) {
     setIsAdding(true);
     onAddToCart({ ...article, quantite });
     setTimeout(() => setIsAdding(false), 1000);
+  };
+
+  const handleShowRarity = () => {
+    if (onShowRarity) {
+      onShowRarity(article);
+    } else {
+      console.log(article.rarity);
+    }
   };
 
   const getRarityColor = (rarity: string) => {
@@ -39,7 +50,7 @@ export function ArticleCard({ article, onAddToCart }: ArticleCardProps) {
   };
 
   return (
-    <div className="bg-gradient-to-r from-neutral-800 to-neutral-900 rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-all duration-300 border border-neutral-800">
+    <div className="relative bg-gradient-to-r from-neutral-800 to-neutral-900 rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-all duration-300 border border-neutral-800">
       {/* Badge de rareté */}
       <div className={`absolute top-2 right-2 z-10 px-2 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r ${getRarityColor(article.rarity)}`}>
         {article.rarity}
@@ -47,7 +58,11 @@ export function ArticleCard({ article, onAddToCart }: ArticleCardProps) {
       
       {/* Image */}
       <div className="relative h-48 bg-gradient-to-br from-blue-200 to-blue-300 flex items-center justify-center">
-        <div className="text-6xl opacity-20">🥷</div>
+        {article.image && article.image !== '' ? (
+          <img src={article.image} alt={article.titre} className="h-full max-h-44 w-auto object-contain mx-auto" />
+        ) : (
+          <div className="text-6xl opacity-20">🥷</div>
+        )}
         <div className="absolute bottom-2 left-2 flex items-center text-yellow-500">
           <Star className="w-4 h-4 fill-current" />
           <span className="text-sm font-medium ml-1">{article.rating}</span>
@@ -57,7 +72,12 @@ export function ArticleCard({ article, onAddToCart }: ArticleCardProps) {
       {/* Contenu */}
       <div className="p-4">
         <h3 className="font-bold text-lg text-sky-200 mb-2">{article.titre}</h3>
-        <p className="text-white text-sm mb-3 line-clamp-2">{article.description}</p>
+        {/* <p className="text-white text-sm mb-1 line-clamp-2">{article.description}</p> */}
+        {article.categorie && (
+          <div className="text-xs text-gray-400 mb-2">
+            Catégorie : {article.categorie.charAt(0).toUpperCase() + article.categorie.slice(1)}
+          </div>
+        )}
         
         {/* Stock */}
         <div className="flex items-center mb-3">
@@ -88,6 +108,14 @@ export function ArticleCard({ article, onAddToCart }: ArticleCardProps) {
             <div className="text-2xl font-bold text-orange-600">{article.prix} ¥</div>
           </div>
         </div>
+
+        {/* Bouton pour enregistrer l'article */}
+        <button 
+          onClick={handleShowRarity}
+          className="w-full mb-2 py-2 px-4 rounded-lg font-medium transition-all duration-200 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white transform hover:scale-105"
+        >
+          Enregistrer l'article
+        </button>
 
         {/* Bouton d'achat */}
         <button 

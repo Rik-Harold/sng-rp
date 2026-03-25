@@ -1,82 +1,18 @@
 'use client'
 
 // Importation des dépendances
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ShoppingCart } from 'lucide-react'
 
 // Importation de composants
-import { ArticleCard, Article } from "@/components/Article"
+import { ArticleCard } from "@/components/Article"
 import { PanierNinja } from "@/components/PanierNinja"
 
 // Données des articles avec plus de détails
-const articlesNinja = [
-  {
-    id: 1,
-    titre: 'Shuriken Légendaire',
-    description: 'Shuriken tranchant forgé dans l\'acier du Pays du Fer.',
-    prix: 25,
-    image: '/api/placeholder/200/150',
-    categorie: 'Arme',
-    rarity: 'Légendaire',
-    stock: 12,
-    rating: 4.8
-  },
-  {
-    id: 2,
-    titre: 'Kunaï d\'Élite',
-    description: 'Kunaï utilisé par les ninjas d\'élite, équilibrage parfait',
-    prix: 45,
-    image: '/api/placeholder/200/150',
-    categorie: 'Arme',
-    rarity: 'Rare',
-    stock: 8,
-    rating: 4.6
-  },
-  {
-    id: 3,
-    titre: 'Cape Akatsuki',
-    description: 'Cape de l\'organisation Akatsuki, nuages rouges brodés',
-    prix: 85,
-    image: '/api/placeholder/200/150',
-    categorie: 'Vêtement',
-    rarity: 'Épique',
-    stock: 3,
-    rating: 4.9
-  },
-  {
-    id: 4,
-    titre: 'Katana',
-    description: 'Katana traditionnel ninja, lame aiguisée et équilibrée.',
-    prix: 15,
-    image: '/api/placeholder/200/150',
-    categorie: 'Arme',
-    rarity: 'Commun',
-    stock: 25,
-    rating: 4.2
-  },
-  {
-    id: 5,
-    titre: 'Masque ANBU',
-    description: 'Masque des forces spéciales ANBU de Konoha',
-    prix: 120,
-    image: '/api/placeholder/200/150',
-    categorie: 'Accessoire',
-    rarity: 'Légendaire',
-    stock: 2,
-    rating: 5.0
-  },
-  {
-    id: 6,
-    titre: 'Parchemin Explosif',
-    description: 'Parchemin explosif utilisé pour des pièges ninja.',
-    prix: 35,
-    image: '/api/placeholder/200/150',
-    categorie: 'Consommable',
-    rarity: 'Rare',
-    stock: 15,
-    rating: 4.4
-  }
-];
+// const articlesNinja = [ ... ];
+
+const API_URL_LOCAL = "http://localhost:3001/sng/liste/article";
+const API_URL = "https://datarikbook-api.vercel.app/sng/liste/article";
 
 // Mise à disposition de l'entête
 type PanierItem = {
@@ -92,11 +28,49 @@ type PanierItem = {
   quantite: number;
 };
 
+type Article = {
+  id: number;
+  titre: string;
+  description: string;
+  prix: number;
+  stock: number;
+  rarity: string;
+  rating: number;
+  image?: string;
+  categorie?: string;
+  dispo?: boolean;
+};
+
 export default function BoutiqueGroupe() {
+  const [articlesNinja, setArticlesNinja] = useState<Article[]>([]);
   const [panier, setPanier] = useState<PanierItem[]>([]);
   const [isPanierOpen, setIsPanierOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState('Tous');
+  const whatsappNumber = '33615641467'; // Remplace par ton numéro sans +
+
+  useEffect(() => {
+    fetch(API_URL)
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok && Array.isArray(data.liste)) {
+          setArticlesNinja(
+            data.liste.map((a: any) => ({
+              id: a.id,
+              titre: a.name.charAt(0).toUpperCase() + a.name.slice(1),
+              description: a.categorie ? `Catégorie : ${a.categorie}` : '',
+              prix: a.prix,
+              stock: a.illimite ? 99 : (a.quantite?.valeur ?? 0),
+              rarity: a.prix >= 500 ? 'Légendaire' : a.prix >= 200 ? 'Épique' : a.illimite ? 'Commun' : a.quantite.valeur > 1 ? 'Rare' : a.quantite.valeur > 3 ? 'Épique' : a.quantite.valeur > 0 ? 'Légendaire' : 'Commun',
+              rating: 4.5, // Valeur par défaut, à ajuster si dispo
+              image: a.image ? `/images/articles/${a.image}` : undefined,
+              categorie: a.categorie,
+              dispo: a.dispo,
+            }))
+          );
+        }
+      });
+  }, []);
 
   const addToCart = (article: Article & { quantite: number }) => {
     setPanier(prevPanier => {
@@ -139,25 +113,34 @@ export default function BoutiqueGroupe() {
     };
 
   const handleCheckout = () => {
+    // Générer le récapitulatif
+    const recap = panier.map(item => `${item.titre} x${item.quantite} - ${item.prix * item.quantite}¥`).join('%0A');
+    const total = panier.reduce((sum, item) => sum + item.prix * item.quantite, 0);
+    const message = `Bonjour, je viens de faire un achat sur la boutique SNG :%0A${recap}%0ATotal : ${total}¥`;
     setPanier([]);
     setIsPanierOpen(false);
+    // Redirection WhatsApp
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
   };
 
-  const filteredArticles = articlesNinja.filter(article => {
+  const filteredArticles = articlesNinja.filter((article: Article) => {
     const matchesSearch = article.titre.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filter === 'Tous' || article.categorie === filter;
     return matchesSearch && matchesFilter;
   });
 
-  const categories = ['Tous', ...new Set(articlesNinja.map(article => article.categorie))];
+  const handleShowRarity = (article: Article) => {
+    console.log('Rareté de l\'article:', article.rarity);
+  };
+
+  const categories = ['Tous', ...new Set(articlesNinja.map((article: Article) => article.categorie ))];
   const totalItems = panier.reduce((sum, item) => sum + item.quantite, 0);
 
   return (
     <div className="pt-24 pb-12">
-      {/* Header */}
-      {/* bg-gradient-to-r from-orange-600 to-red-600 text-white p-6 shadow-lg */}
       <div className="bg-gradient-to-r from-neutral-900 to-neutral-950 text-white p-6 shadow-lg">
         <div className="max-w-7xl mx-auto">
+          {/* Titre et bouton du panier */}
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-4xl font-bold flex items-center space-x-3">
               <span>Boutique Ninja</span>
@@ -183,15 +166,15 @@ export default function BoutiqueGroupe() {
               placeholder="Rechercher un article ninja..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-4 py-2 rounded-lg text-gray-600 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="flex-1 px-4 py-2 rounded-lg text-gray-600 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-border-dark"
             />
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="px-4 py-2 rounded-lg text-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-400 border border-border-dark"
             >
               {categories.map(category => (
-                <option key={category} value={category}>{category}</option>
+                <option key={category} value={category}>{category ? category.charAt(0).toUpperCase() + category.slice(1) : 'Tous'}</option>
               ))}
             </select>
           </div>
@@ -206,6 +189,7 @@ export default function BoutiqueGroupe() {
               key={article.id} 
               article={article} 
               onAddToCart={addToCart}
+              onShowRarity={handleShowRarity}
             />
           ))}
         </div>

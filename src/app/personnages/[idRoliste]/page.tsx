@@ -1,7 +1,7 @@
 'use client';
 
 // Importation de dépendances nécessaires
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'next/navigation';
 
@@ -12,10 +12,12 @@ import { capitalizeFirstLetter } from '@/middlewares/formatfunctions';
 
 import CharacterDetail from '@/components/CharacterDetail';
 
+const API_URL_LOCAL = "http://localhost:3001/sng/liste/avatars/sng";
+const API_URL = "https://datarikbook-api.vercel.app/sng/liste/avatars/sng";
+
 // Types pour l'API
 type ApiCharacter = {
   id: string;
-  actif: boolean;
   mort: boolean;
   clan: string;
   name: string;
@@ -65,15 +67,11 @@ type LocalCharacter = {
     psychicGrip: { current: number; max: number };
     sensoryCapacities: { current: number; max: number };
   };
-  health: number;
-  strength: number;
-  speed: number;
-  intelligence: number;
   ninjaEquipment: Array<{ name: string; quantity: number }>;
   palmares: { [key: string]: number | string };
   jutsu: Array<{ rank: string; name: string; custom?: boolean }>;
   ninjaExperience: Array<{ date: string; description: string }>;
-  rewardsToApply: Array<{ type: string; name?: string; value?: any }>;
+  rewardsToApply: Array<{ type: string; name?: string; value?: number | string }>;
   newExperienceDate: string;
   newExperienceDescription: string;
 };
@@ -94,7 +92,7 @@ function MessageBox({ message, type, onClose }: MessageBoxProps) {
       initial={{ opacity: 0, y: -50 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -50 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-lg ${bgColor} ${textColor} z-50 flex items-center`}
+      className={`fixed top-28 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-lg ${bgColor} ${textColor} z-50 flex items-center`}
     >
       <span>{message}</span>
       <button onClick={onClose} className="ml-4 text-white font-bold">
@@ -133,15 +131,53 @@ function CharacterCard({ character, onSelect }: { character: LocalCharacter; onS
   );
 }
 
+type Character = {
+  id: string;
+  avatarName: string;
+  image: string;
+  level: number;
+  grade: string;
+  rolist: string;
+  userTag: string;
+  clanFamily: string;
+  originCountry: string;
+  currentVillage: string;
+  kinship: string;
+  age: number;
+  height: number;
+  chakraNatures: string[];
+  specialCapacity: string;
+  specialization: string;
+  hereditaryCapacity: string[];
+  ninjaSkills: {
+    agility: { current: number; max: number };
+    speed: { current: number; max: number };
+    precision: { current: number; max: number };
+    reactivity: { current: number; max: number };
+    endurance: { current: number; max: number };
+    bruteForce: { current: number; max: number };
+    psychicGrip: { current: number; max: number };
+    sensoryCapacities: { current: number; max: number };
+  };
+  rewardsToApply: Array<{ type: string; name?: string; value?: number | string }>;
+  ninjaEquipment: Array<{ name: string; quantity: number }>;
+  palmares: { [key: string]: number | string };
+  jutsu: Array<{ rank: string; name: string; custom?: boolean }>;
+  ninjaExperience: Array<{ date: string; description: string }>;
+  newExperienceDate: string;
+  newExperienceDescription: string;
+};
+
 export default function Page() {
   const params = useParams();
   const rolistId = decodeURIComponent(params.idRoliste as string);
   
   const [characters, setCharacters] = useState<LocalCharacter[]>([]);
-  const [selectedCharacter, setSelectedCharacter] = useState<LocalCharacter | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [messageBox, setMessageBox] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
+  const [loadingCharacter, setLoadingCharacter] = useState(false);
 
   // Fonction pour convertir les données de l'API vers le format local
   const convertApiCharacterToLocal = (apiChar: ApiCharacter): LocalCharacter => {
@@ -173,10 +209,6 @@ export default function Page() {
         psychicGrip: { current: 25, max: 200 },
         sensoryCapacities: { current: 25, max: 500 },
       },
-      health: 100,
-      strength: 15,
-      speed: 18,
-      intelligence: 10,
       ninjaEquipment: [],
       palmares: {
         'Combats gagnés': 0,
@@ -200,9 +232,7 @@ export default function Page() {
       ninjaExperience: [
         { date: new Date().toLocaleDateString('fr-FR'), description: 'Intégration à la communauté' }
       ],
-      rewardsToApply: [
-        { type: 'ninjaSkillPoints', value: 10 }
-      ],
+      rewardsToApply: [],
       newExperienceDate: '',
       newExperienceDescription: '',
     };
@@ -232,13 +262,13 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('https://datarikbook-api.vercel.app/sng/liste/avatars/sng');
+        const response = await fetch(API_URL);
         const data: ApiResponse = await response.json();
         
         if (data.ok && data.liste) {
           // Filtrer les personnages par rôliste et convertir le format
           const filteredCharacters = data.liste
-            .filter(char => char.roliste.toLowerCase() === rolistId.toLowerCase() && char.actif && !char.mort)
+            .filter(char => char.roliste.toLowerCase() === rolistId.toLowerCase())
             .map(convertApiCharacterToLocal);
           
           setCharacters(filteredCharacters);
@@ -260,9 +290,25 @@ export default function Page() {
     fetchCharacters();
   }, [rolistId]);
 
-  // Fonction pour sélectionner un personnage et afficher ses détails
-  const handleSelectCharacter = (character: LocalCharacter) => {
-    setSelectedCharacter(character);
+  // Fonction pour sélectionner un personnage et charger dynamiquement ses infos depuis l'API
+  const handleSelectCharacter = async (character: LocalCharacter) => {
+    setLoadingCharacter(true);
+    try {
+      // const res = await fetch(`http://localhost:3001/sng/liste/avatars/actif/${character.avatarName}`);
+      const res = await fetch(`https://datarikbook-api.vercel.app/sng/liste/avatars/actif/${character.avatarName}`);
+      const data = await res.json();
+      if (data.ok && data.avatar) {
+        setSelectedCharacter(convertApiAvatarToCharacter(data.avatar));
+      } else {
+        setSelectedCharacter(null);
+        setMessageBox({ show: true, message: 'Erreur lors de la récupération de la fiche personnage.', type: 'error' });
+      }
+    } catch (e) {
+      setSelectedCharacter(null);
+      setMessageBox({ show: true, message: 'Erreur de connexion à l\'API.', type: 'error' });
+    } finally {
+      setLoadingCharacter(false);
+    }
   };
 
   // Fonction pour revenir à la liste des personnages
@@ -386,7 +432,66 @@ ${experienceList}
     return endurance - (endurance % 5);
   };
 
-  if (loading) {
+  // Conversion API -> Character complet pour CharacterDetail
+  const convertApiAvatarToCharacter = (api: any): Character => ({
+    id: api._id,
+    avatarName: api.name,
+    image: api.image?.principale ? `/avatars/profil/${api.image.principale}` : '',
+    level: 1,
+    grade: api.grade,
+    rolist: api.roliste,
+    userTag: api.utilisateur?.toString() ?? '',
+    clanFamily: api.clan,
+    originCountry: api.pays,
+    currentVillage: api.village,
+    kinship: api.lien,
+    age: api.age,
+    height: api.taille,
+    chakraNatures: api.affinite ?? [],
+    specialCapacity: api.capacite?.speciale ?? '',
+    specialization: '', // à compléter si besoin
+    hereditaryCapacity: api.capacite?.hereditaire ?? [],
+    ninjaSkills: {
+      agility: { current: api.competences?.vitesse?.total ?? 0, max: api.competences?.vitesse?.total ?? 0 },
+      speed: { current: api.competences?.vitesse?.total ?? 0, max: api.competences?.vitesse?.total ?? 0 },
+      precision: { current: api.competences?.precision ?? 0, max: api.competences?.precision ?? 0 },
+      reactivity: { current: api.competences?.reactivite ?? 0, max: api.competences?.reactivite ?? 0 },
+      endurance: { current: api.competences?.endurance ?? 0, max: api.competences?.endurance ?? 0 },
+      bruteForce: { current: api.competences?.force_brute ?? 0, max: api.competences?.force_brute ?? 0 },
+      psychicGrip: { current: api.competences?.etreinte ?? 0, max: api.competences?.etreinte ?? 0 },
+      sensoryCapacities: { current: api.competences?.sensorielles ?? 0, max: api.competences?.sensorielles ?? 0 },
+    },
+    ninjaEquipment: (api.equipements ?? []).map((eq: any) => ({
+      name: eq.name,
+      quantity: eq.nb,
+    })),
+    palmares: {
+      'Combats gagnés': api.stats_ninja?.combats?.gagne ?? 0,
+      'Total combats': api.stats_ninja?.combats?.tout ?? 0,
+      'Tournois gagnés': api.stats_ninja?.tournois?.gagnes ?? 0,
+      'Total tournois': api.stats_ninja?.tournois?.tout ?? 0,
+      'Missions S remplies': api.stats_ninja?.missions?.rang_s?.remplie ?? 0,
+      'Total missions S': api.stats_ninja?.missions?.rang_s?.total ?? 0,
+      'Missions A remplies': api.stats_ninja?.missions?.rang_a?.remplie ?? 0,
+      'Total missions A': api.stats_ninja?.missions?.rang_a?.total ?? 0,
+      'Missions B remplies': api.stats_ninja?.missions?.rang_b?.remplie ?? 0,
+      'Total missions B': api.stats_ninja?.missions?.rang_b?.total ?? 0,
+      'Missions C remplies': api.stats_ninja?.missions?.rang_c?.remplie ?? 0,
+      'Total missions C': api.stats_ninja?.missions?.rang_c?.total ?? 0,
+      'Missions D remplies': api.stats_ninja?.missions?.rang_d?.remplie ?? 0,
+      'Total missions D': api.stats_ninja?.missions?.rang_d?.total ?? 0,
+      'Missions E remplies': api.stats_ninja?.missions?.rang_e?.remplie ?? 0,
+      'Total missions E': api.stats_ninja?.missions?.rang_e?.total ?? 0,
+    },
+    jutsu: api.jutsu ?? [],
+    ninjaExperience: [], // à compléter si tu as l'info
+    rewardsToApply: [],
+    newExperienceDate: '',
+    newExperienceDescription: '',
+  });
+
+  // Affichage du chargement ou des erreurs
+  if (loading || loadingCharacter) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 to-black text-white">
         <div className="text-xl font-bold flex items-center">
@@ -417,84 +522,91 @@ ${experienceList}
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-800/70 backdrop-blur-sm text-white font-inter pt-24 pb-12">
-        <AnimatePresence>
-            {messageBox.show && (
-            <MessageBox
-                message={messageBox.message}
-                type={messageBox.type}
-                onClose={() => setMessageBox({ ...messageBox, show: false })}
-            />
-            )}
-        </AnimatePresence>
+  // bg-gray-800/70
 
-        {selectedCharacter ? (
-          <div className="container mx-auto px-4 py-8">
-            <motion.button
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleBackToList}
-              className="mb-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 flex items-center"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Retour à la liste
-            </motion.button>
-            <CharacterDetail
-              character={convertLocalToCharacter(selectedCharacter)}
-              onUpdate={(updatedCharacter) => handleUpdateCharacter(convertCharacterToLocal(updatedCharacter))}
-              onShare={(character) => handleShareCharacter(convertCharacterToLocal(character))}
-              loading={loading}
-              setMessageBox={setMessageBox}
-              calculateChakra={calculateChakra}
-            />
-          </div>
-        ) : (
-          <div className="container mx-auto px-4 py-8">
+  return (
+    <div className="bg-dark-bg backdrop-blur-sm text-white font-inter pt-24 pb-12">
+      {/* Notifications */}
+      <AnimatePresence>
+        {messageBox.show && (
+          <MessageBox
+            message={messageBox.message}
+            type={messageBox.type}
+            onClose={() => setMessageBox({ ...messageBox, show: false })}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Affichage des détails du personnage sélectionné */}
+      {selectedCharacter ? (
+        <div className="container mx-auto px-4 py-8">
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleBackToList}
+            className="mb-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 flex items-center"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Retour à la liste
+          </motion.button>
+          <CharacterDetail
+            character={selectedCharacter}
+            onUpdate={handleUpdateCharacter}
+            onShare={handleShareCharacter}
+            loading={loading || loadingCharacter}
+            setMessageBox={setMessageBox}
+            calculateChakra={calculateChakra}
+          />
+        </div>
+      ) : (
+        // Affichage de la liste des personnages
+        <div className="container mx-auto px-4 py-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <h1 className="text-4xl font-bold text-blue-300 mb-2">
+              Personnages de {rolistId}
+            </h1>
+            <p className="text-gray-400 text-lg">
+              Sélectionnez un personnage pour voir ses détails
+            </p>
+          </motion.div>
+
+          {/* Affichage des cartes de personnages */}
+          {characters.length > 0 ? (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-center mb-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             >
-              <h1 className="text-4xl font-bold text-blue-300 mb-2">
-                Personnages de {rolistId}
-              </h1>
-              <p className="text-gray-400 text-lg">
-                Sélectionnez un personnage pour voir ses détails
+              {characters.map((character) => (
+                <CharacterCard
+                  key={character.avatarName}
+                  character={character}
+                  onSelect={() => handleSelectCharacter(character)}
+                />
+              ))}
+            </motion.div>
+          ) : (
+            // Message si aucun personnage n'est trouvé
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <p className="text-gray-400 text-xl">
+                Aucun personnage trouvé pour ce rôliste.
               </p>
             </motion.div>
-
-            {characters.length > 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-              >
-                {characters.map((character) => (
-                  <CharacterCard
-                    key={character.avatarName}
-                    character={character}
-                    onSelect={handleSelectCharacter}
-                  />
-                ))}
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-12"
-              >
-                <p className="text-gray-400 text-xl">
-                  Aucun personnage trouvé pour ce rôliste.
-                </p>
-              </motion.div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
+      )}
     </div>
   );
 }

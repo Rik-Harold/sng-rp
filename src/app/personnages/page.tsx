@@ -5,7 +5,6 @@ import { Search, X, Eye, ExternalLink } from 'lucide-react'; // Ajout de Menu po
 import { useState, useEffect, useCallback } from 'react';
 
 // Importation de composants réutilisables
-import Navbar from "@/components/NavBar";
 import { capitalizeFirstLetter } from "@/middlewares/formatfunctions";
 
 // --- VARIANTES D'ANIMATION (FRAMER MOTION) ---
@@ -44,6 +43,9 @@ type Character = {
     };
 };
 
+const API_URL_LOCAL = "http://localhost:3001/sng/liste/avatars/sng";
+const API_URL = "https://datarikbook-api.vercel.app/sng/liste/avatars/sng";
+
 export default function CharactersPage() {
     const [characters, setCharacters] = useState<Character[]>([]);
     const [filteredCharacters, setFilteredCharacters] = useState<Character[]>([]);
@@ -55,12 +57,9 @@ export default function CharactersPage() {
     // Récupération des données depuis l'API
     useEffect(() => {
         const fetchCharacters = async () => {
-            const url = {
-                ligne: 'https://datarikbook-api.vercel.app/sng/liste/avatars/sng',
-                local: 'http://localhost:3001/sng/liste/avatars/sng', // Chemin local pour l'image par défaut
-            }
             try {
-                const response = await fetch(url.ligne);
+                // const response = await fetch(API_URL);
+                const response = await fetch(API_URL_LOCAL); // Utilisation de l'URL locale pour le développement
                 if (!response.ok) {
                     throw new Error(`Erreur HTTP: ${response.status}`);
                 }
@@ -69,11 +68,11 @@ export default function CharactersPage() {
                     setCharacters(data.liste);
                     setFilteredCharacters(data.liste); // Initialise les personnages filtrés avec tous les personnages
                 } else {
-                    setError('Format de données inattendu.' as any);
+                    setError('Format de données inattendu.' as string);
                 }
             } catch (err) {
                 console.error("Erreur lors de la récupération des personnages:", err);
-                setError('Impossible de charger les personnages. Veuillez réessayer plus tard.' as any);
+                setError('Impossible de charger les personnages. Veuillez réessayer plus tard.' as string);
             } finally {
                 setLoading(false);
             }
@@ -85,7 +84,7 @@ export default function CharactersPage() {
     // Logique de filtrage des personnages
     useEffect(() => {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
-        const filtered = characters.filter((char: any) =>
+        const filtered = characters.filter((char: Character) =>
             char.name.toLowerCase().includes(lowerCaseSearchTerm) ||
             (char.clan && char.clan.toLowerCase().includes(lowerCaseSearchTerm) && char.clan !== 'inconnu') ||
             (char.grade && char.grade.toLowerCase().includes(lowerCaseSearchTerm)) ||
@@ -95,7 +94,7 @@ export default function CharactersPage() {
     }, [searchTerm, characters]);
 
     // Ouvre le modal avec les détails du personnage sélectionné
-    const openModal = useCallback((character: any) => {
+    const openModal = useCallback((character: Character) => {
         setSelectedCharacter(character);
         document.body.style.overflow = 'hidden'; // Empêche le défilement du corps
     }, []);
@@ -123,8 +122,7 @@ export default function CharactersPage() {
     }
 
     return (
-        <div className="bg-dark-bg text-text-light min-h-screen font-sans overflow-x-hidden pt-24 pb-12">
-            <Navbar /> {/* Inclure la barre de navigation */}
+        <div className="bg-dark-bg text-text-light font-sans overflow-x-hidden pt-24 pb-12">
             <main>
                 <Section
                     id="characters-list"
@@ -164,7 +162,7 @@ export default function CharactersPage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8, ease: "easeOut" }}
                         >
-                            {filteredCharacters.map((char: any) => (
+                            {filteredCharacters.map((char: Character) => (
                                 <motion.div
                                     key={char.name} // Utilise l'ID si disponible, sinon un combo unique
                                     className="bg-dark-card p-6 rounded-xl border border-border-dark text-center flex flex-col items-center shadow-lg hover:shadow-orange-primary/20 transition-all duration-300"
@@ -185,7 +183,7 @@ export default function CharactersPage() {
                                     {char.clan && char.clan !== 'inconnu' && (
                                         <p className="text-sm text-text-secondary mb-1">Clan: <span className="text-orange-primary font-medium">{capitalizeFirstLetter(char.clan)}</span></p>
                                     )}
-                                    <p className="text-sm text-text-secondary mb-1">Grade: <span className="text-text-light">{capitalizeFirstLetter(char.grade)}</span></p>
+                                    <p className="text-sm text-text-secondary mb-1">Grade: <span className="text-text-light">{capitalizeFirstLetter(char.grade ?? '')}</span></p>
                                     <p className="text-sm text-text-secondary mb-4">Rôliste: <span className="text-text-light">{capitalizeFirstLetter(char.roliste)}</span></p>
 
                                     <div className="flex space-x-3 mt-auto w-full justify-center">
@@ -243,7 +241,7 @@ export default function CharactersPage() {
                         >
                             <X size={28} />
                         </button>
-                        <h2 className="text-3xl font-bold text-orange-primary mb-4 text-center">{selectedCharacter?.name || 'Nom inconnu'}</h2>
+                        <h2 className="text-3xl font-bold text-orange-primary mb-4 text-center">{selectedCharacter?.name.charAt(0).toUpperCase() + selectedCharacter?.name.slice(1)}</h2>
                         <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                             <div className="relative w-48 h-48 flex-shrink-0">
                                 <img // Remplacement de Image par img
@@ -269,6 +267,7 @@ export default function CharactersPage() {
                                 <p className="mb-2 text-text-light"><span className="font-semibold text-orange-primary">Mort:</span> {selectedCharacter.mort ? 'Oui' : 'Non'}</p>
                             </div>
                         </div>
+                        {/* Liste des images du personnage */}
                         {selectedCharacter.images?.toutes && selectedCharacter.images.toutes.length > 0 && (
                             <div className="mt-6 border-t border-border-dark pt-4">
                                 <h4 className="font-semibold text-lg mb-3 text-orange-primary">Autres images :</h4>
@@ -296,65 +295,6 @@ export default function CharactersPage() {
 }
 
 // --- COMPOSANTS RÉUTILISABLES (COPIÉS DE VOTRE page.tsx POUR LA COHÉRENCE) ---
-
-// const Navbar = () => {
-//     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-//     const navLinks = [
-//         { href: '/', label: 'Accueil' }, // Lien vers la page d'accueil
-//         { href: '#characters-list', label: 'Personnages' },
-//     ];
-
-//     return (
-//         <motion.nav
-//             initial={{ y: -100 }}
-//             animate={{ y: 0 }}
-//             transition={{ duration: 0.5, ease: 'easeOut' }}
-//             className="fixed top-0 left-0 right-0 z-50 bg-dark-bg/80 backdrop-blur-lg border-b border-border-dark"
-//         >
-//             <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-//                 <a href="/" className="text-2xl font-bold text-text-light"> {/* Remplacement de Link par a */}
-//                     Kage no <span className="text-orange-primary">Densetsu</span>
-//                 </a>
-
-//                 {/* Menu pour ordinateur */}
-//                 <div className="hidden md:flex items-center space-x-6">
-//                     {navLinks.map(link => (
-//                         <a key={link.href} href={link.href} className="hover:text-orange-primary transition-colors">{link.label}</a> // Remplacement de Link par a
-//                     ))}
-//                     <a href="https://wa.me/22967879902" target="_blank" rel="noopener noreferrer" className="bg-orange-primary text-text-light px-4 py-2 rounded-full font-semibold hover:bg-orange-hover transition-colors">
-//                         Contact
-//                     </a>
-//                 </div>
-
-//                 {/* Bouton du menu mobile */}
-//                 <div className="md:hidden">
-//                     <button onClick={() => setIsMenuOpen(!isMenuOpen)}>
-//                         {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
-//                     </button>
-//                 </div>
-//             </div>
-
-//             {/* Menu déroulant pour mobile */}
-//             {isMenuOpen && (
-//                 <motion.div
-//                     initial={{ opacity: 0, y: -20 }}
-//                     animate={{ opacity: 1, y: 0 }}
-//                     className="md:hidden bg-dark-card flex flex-col items-center space-y-4 py-4"
-//                 >
-//                     {navLinks.map(link => (
-//                         <a key={link.href} href={link.href} className="hover:text-orange-primary transition-colors" onClick={() => setIsMenuOpen(false)}> {/* Remplacement de Link par a */}
-//                             {link.label}
-//                         </a>
-//                     ))}
-//                     <a href="https://wa.me/22967879902" target="_blank" rel="noopener noreferrer" className="bg-orange-primary text-text-light px-4 py-2 rounded-full font-semibold hover:bg-orange-hover transition-colors">
-//                         Contact
-//                     </a>
-//                 </motion.div>
-//             )}
-//         </motion.nav>
-//     );
-// };
 
 // Composant générique pour les sections afin d'éviter la répétition de code
 const Section = ({ id, title, description, children }: { id: string, title: string, description: string, children: React.ReactNode }) => (

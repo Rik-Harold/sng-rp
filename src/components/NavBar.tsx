@@ -10,7 +10,8 @@ const Navbar = (): JSX.Element => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const navLinks = [
-        { href: '/', label: 'Accueil' },
+        { href: '/dashboard', label: 'Dashboard' },
+        { href: '/arene', label: 'Arènes' },
         { href: '/personnages', label: 'Personnages' },
         { href: '/boutique', label: 'Boutique Ninja' },
         // { href: '#videos', label: 'Vidéos' },
@@ -21,11 +22,11 @@ const Navbar = (): JSX.Element => {
             initial={{ y: -100 }}
             animate={{ y: 0 }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
-            className="fixed top-0 left-0 right-0 z-50 bg-dark-bg/80 backdrop-blur-lg border-b border-border-dark"
+            className="fixed top-0 left-0 right-0 z-10 bg-dark-bg/80 backdrop-blur-lg border-b border-border-dark"
         >
             <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-                <Link href="#hero" className="text-2xl font-bold text-text-light">
-                    Kage no <span className="text-orange-primary">Densetsu</span>
+                <Link href="/#hero" className="text-2xl font-bold text-text-light">
+                    Shinobi New Generation
                 </Link>
                 
                 {/* Menu pour ordinateur */}

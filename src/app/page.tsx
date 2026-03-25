@@ -2,10 +2,9 @@
 
 import { motion } from "framer-motion";
 import Image from "next/image";
-import Link from "next/link";
 import { Swords, Gamepad2, Trophy, Store } from 'lucide-react';
 import useEmblaCarousel from 'embla-carousel-react'
-import { useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 
 // --- DONNÉES DE LA PAGE ---
 // Centraliser les données facilite leur mise à jour.
@@ -155,14 +154,6 @@ const AboutCarousel = ({ slides }: { slides: string[] }) => {
     // Le plugin Autoplay n'est pas inclus par défaut, ceci est une implémentation simple
     const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
 
-    // const scrollPrev = useCallback(() => {
-    //     if (emblaApi) emblaApi.scrollPrev()
-    // }, [emblaApi]);
-
-    // const scrollNext = useCallback(() => {
-    //     if (emblaApi) emblaApi.scrollNext()
-    // }, [emblaApi]);
-
     // Autoplay simple
     useEffect(() => {
         if (!emblaApi) return;
@@ -246,11 +237,11 @@ const CharactersSection = () => (
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.2 }}
         >
-            <Link href="/personnages" className="bg-transparent border-2 border-orange-primary text-orange-primary px-8 py-3 rounded-full text-lg font-bold hover:bg-orange-primary hover:text-white transition-all transform hover:scale-105 w-full sm:w-auto text-center">
-                Consulter les personnages
-            </Link>
-            <a href="https://wa.me/22967879902" target="_blank" rel="noopener noreferrer" className="bg-orange-primary text-white px-8 py-3 rounded-full text-lg font-bold shadow-lg shadow-orange-primary/30 hover:bg-orange-hover hover:scale-105 transition-all transform w-full sm:w-auto text-center">
-                Créer un personnage
+            <a href="/Fandom_SNG.pdf" target="_blank" className="bg-transparent border-2 border-orange-primary text-orange-primary px-8 py-3 rounded-full text-lg font-bold hover:bg-orange-primary hover:text-white transition-all transform hover:scale-105 w-full sm:w-auto text-center">
+              Consulter le fandom
+            </a>
+            <a href="https://wa.me/33615641467" target="_blank" rel="noopener noreferrer" className="bg-orange-primary text-white px-8 py-3 rounded-full text-lg font-bold shadow-lg shadow-orange-primary/30 hover:bg-orange-hover hover:scale-105 transition-all transform w-full sm:w-auto text-center">
+              Créer un personnage
             </a>
         </motion.div>
     </Section>
@@ -291,6 +282,8 @@ const VideosSection = () => (
         title="La Communauté en Action"
         description="Revivez les moments forts de notre communauté, des combats mémorables aux événements spéciaux, directement depuis notre chaîne YouTube."
     >
+      {/* <EvolutionCombats /> */}
+        
         <motion.div 
           className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
           variants={cardContainerVariants}
