@@ -1,6 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
+const API = {
+  local: 'http://localhost:8001',
+  ligne: '',
+  url: 'stats/evolution'
+}
+
 const EvolutionCombats = ({ arena } : { arena: number }) => {
   const [dataCombat, setDataCombat] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -8,7 +14,7 @@ const EvolutionCombats = ({ arena } : { arena: number }) => {
 
   useEffect(() => {
     // Appel à ton API Python
-    fetch(`http://localhost:8001/stats/evolution/${arena}/${year}`)
+    fetch(`${API.local}/${API.url}/${arena}/${year}`)
       .then(response => response.json())
       .then(stats => {
         setDataCombat(stats.evolution);

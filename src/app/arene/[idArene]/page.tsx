@@ -880,6 +880,12 @@ const getCombattantImg = (nameRoliste: string) => {
     return source
 }
 
+const API = {
+  local: 'http://localhost:8001',
+  ligne: '',
+  url: 'arene'
+}
+
 export default function AreneDeCombat() {
   // Récupérer l'ID du combat depuis l'URL
   const searchParams = useSearchParams();
@@ -890,7 +896,7 @@ export default function AreneDeCombat() {
 
   // Récupération des messages du combat
   useEffect(() => {
-    fetch(`http://localhost:8001/arene/${combatArenaFromUrl}/combats/${combatIdFromUrl}`)
+    fetch(`${API.local}/${API.url}/${combatArenaFromUrl}/combats/${combatIdFromUrl}`)
       .then(res => res.json())
       .then(data => {
         setFight(data.combat);
@@ -921,19 +927,7 @@ export default function AreneDeCombat() {
   ]
   const c1 = shinobi[0]
   const c2 = shinobi[1]
-  const terrainImg = '/images/terrains/arena-bg.jpg' // Personnalise selon le combat si besoin  
-
-//   const [contres, setContres] = useState<ContreType[]>(
-//     figtMessages.map((combat: any, idx: number) => ({
-//       id: idx + 1,
-//       auteur: combat.sender,
-//       combattant: combat.author,
-//       texte: combat.message,
-//       image: null,
-//       date: combat.date,
-//       heure: combat.time
-//     }))
-//   )
+  const terrainImg = '/images/terrains/arena-bg.jpg'
 
   // Pour gérer l'affichage "voir plus" de chaque contre
   const [expandedContres, setExpandedContres] = useState<{[id:number]: boolean}>({})

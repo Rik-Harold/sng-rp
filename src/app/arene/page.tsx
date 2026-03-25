@@ -46,22 +46,10 @@ type Fight = {
   valid_closure: boolean;
 };
 
-const f = {
-  "fight_id":1,
-  "arena":"arena 3",
-  "start_time":1645814940000,
-  "result_type":"inconnu",
-  "arbitre":"aristarque c. a",
-  "combattant_1":"stark",
-  "combattant_2":"stark",
-  "combattant_3":"inconnu",
-  "win":"inconnu",
-  "player_win":"inconnu",
-  "lose":"inconnu",
-  "player_lose":"inconnu",
-  "message_count":7,
-  "end_time":1647451800000,
-  "valid_closure":true
+const API = {
+  local: 'http://localhost:8001',
+  ligne: '',
+  url: 'arene'
 }
 
 export default function Activites() {
@@ -71,7 +59,7 @@ export default function Activites() {
   const [arene, setArene] = useState(1);
 
   useEffect(() => {
-    fetch(`http://localhost:8001/arene/${arene}/combats`)
+    fetch(`${API.local}/${API.url}/${arene}/combats`)
       .then(res => res.json())
       .then(data => {
         setFights(data.combats);

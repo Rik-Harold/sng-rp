@@ -7,6 +7,12 @@ interface Profil {
   avatars: number[];
 }
 
+const API = {
+  local: 'http://localhost:8001',
+  ligne: '',
+  url: 'stats/profil'
+}
+
 // Fonction utilitaire pour capitaliser les textes
 const capitalizeText = (text: string): string => {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
@@ -18,10 +24,10 @@ const ProfilRoliste = ({ pseudo, arena } : { pseudo: string, arena: number }) =>
 
   useEffect(() => {
     // Récupération des données de l'api
-    fetch(`http://localhost:8001/stats/profil/${arena}/${pseudo}`)
+    fetch(`${API.local}/${API.url}/${arena}/${pseudo}`)
       .then(res => res.json())
       .then(data => setProfil(data));
-    fetch(`http://localhost:8001/stats/profil/${pseudo}`)
+    fetch(`${API.local}/${API.url}/${pseudo}`)
       .then(res => res.json())
       .then(data => setFullProfil(data));
   }, [pseudo]);
